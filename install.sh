@@ -20,6 +20,8 @@ cd "$(
 #fonts color
 Green="\033[32m"
 Red="\033[31m"
+GreenW="\033[1;32m"
+RedW="\033[1;31m"
 #Yellow="\033[33m"
 GreenBG="\033[42;30m"
 RedBG="\033[41;30m"
@@ -29,10 +31,10 @@ Font="\033[0m"
 #notification information
 # Info="${Green}[信息]${Font}"
 OK="${Green}[OK]${Font}"
-Error="${Red}[错误]${Font}"
-Warning="${Red}[警告]${Font}"
+Error="${RedW}[错误]${Font}"
+Warning="${RedW}[警告]${Font}"
 
-shell_version="1.9.1.1"
+shell_version="1.9.1.2"
 shell_mode="未安装"
 tls_mode="None"
 ws_grpc_mode="None"
@@ -775,35 +777,44 @@ xray_install() {
 
 xray_update() {
     [[ ! -d /usr/local/etc/xray ]] && echo -e "${GreenBG} 若更新无效, 建议直接卸载再安装！ ${Font}"
+    echo -e "${Warning} ${GreenBG} 部分新功能需要重新安装才可生效 ${Font}"
     xray_online_version=$(curl -s https://api.github.com/repos/XTLS/Xray-core/releases | jq -r .[].tag_name | head -1 | sed 's/v//g')
     xray_prerelease=$(curl -s https://api.github.com/repos/XTLS/Xray-core/releases | jq -r .[].prerelease | head -1)
     if [[ $(info_extraction xray_version) !=  ${xray_online_version} ]] && [[ ${xray_prerelease} == false ]]; then
-        echo -e "${Warning} ${GreenBG} 检测到即将更新到测试版 ${Font}"
+        echo -e "${Warning} ${GreenBG} 检测到存在最新测试版 ${Font}"
         echo -e "${Warning} ${GreenBG} 脚本可能未兼容此版本 ${Font}"
-        echo -e "\n${Warning} ${GreenBG} 是否继续 [Y/${Red}N${Font}${YellowBG}]? ${Font}"
+        echo -e "\n${Warning} ${GreenBG} 是否更新到测试版 [Y/${Red}N${Font}${YellowBG}]? ${Font}"
         read -r xray_test_fq
         case $xray_test_fq in
         [yY][eE][sS] | [yY])
-            echo -e "${Warning} ${GreenBG} 部分新功能需要重新安装才可生效 ${Font}"
+            echo -e "${OK} ${GreenBG} 即将升级 Xray 测试版! ${Font}"
             systemctl stop xray
             wait
-            bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install -f --version v${xray_online_version}
+            xray_version=${xray_online_version}
+            bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install -f --version v${xray_version}
+            judge "Xray 升级"
             ;;
-        *) 
-            echo -e "${OK} ${GreenBG} 退出安装！ ${Font}"
-            return 1
+        *)
+            echo -e "${OK} ${GreenBG} 即将升级/重装 Xray 稳定版! ${Font}"
+            systemctl stop xray
+            wait
+            bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install -f --version v${xray_version}
+            udge "Xray 升级"
             ;;
         esac
     else
-        echo -e "${Warning} ${GreenBG} 部分新功能需要重新安装才可生效 ${Font}"
+        timeout "升级/重装 Xray 稳定版!"
         systemctl stop xray
         wait
         bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install -f --version v${xray_version}
+        judge "Xray 升级"
     fi
     wait
     [[ -f ${ssl_chainpath}/xray.key ]] && xray_privilege_escalation
     [[ -f ${xray_default_conf} ]] && rm -rf ${xray_default_conf}
     ln -s ${xray_conf} ${xray_default_conf}
+    modify_xray_version=$(jq -r ".xray_version = ${xray_version}" ${xray_qr_config_file})
+    echo "${xray_version}" | jq . >${xray_qr_config_file}
     systemctl daemon-reload
     systemctl start xray
 }
@@ -993,9 +1004,8 @@ nginx_update() {
                 nginx_conf_add_xtls
             fi
             service_start
-            sed -i "s/^\( *\)\"nginx_version\".*/\1\"nginx_version\": \"${nginx_version}\",/" ${xray_qr_config_file}
-            sed -i "s/^\( *\)\"openssl_version\".*/\1\"openssl_version\": \"${openssl_version}\",/" ${xray_qr_config_file}
-            sed -i "s/^\( *\)\"jemalloc_version\".*/\1\"jemalloc_version\": \"${jemalloc_version}\"/" ${xray_qr_config_file}
+            modify_nginx_version=$(jq -r ".nginx_version = ${nginx_version}|.openssl_version = ${openssl_version}|.jemalloc_version = ${jemalloc_version}" ${xray_qr_config_file})
+            echo "${modify_nginx_version}" | jq . >${xray_qr_config_file}
             judge "Nginx 升级"
         else
             echo -e "${OK} ${GreenBG} Nginx 已为最新版 ${Font}"
@@ -2773,13 +2783,13 @@ idleleo_commend() {
                     nginx_need_update="${Green}[最新版]${Font}"
                 fi
                 if [[ -f ${xray_qr_config_file} ]] && [[ -f ${xray_conf} ]] && [[ -f /usr/local/bin/xray ]]; then
+                    xray_online_version=$(curl -s https://api.github.com/repos/XTLS/Xray-core/releases | jq -r .[].tag_name | head -1 | sed 's/v//g')
+                    xray_prerelease=$(curl -s https://api.github.com/repos/XTLS/Xray-core/releases | jq -r .[].prerelease | head -1)
                     if [[ $(info_extraction xray_version) == null ]]; then
                         xray_need_update="${Green}[已安装] (版本未知)${Font}"
-                    elif [[ ${xray_version} != $(info_extraction xray_version) ]]; then
+                    elif [[ ${xray_version} != $(info_extraction xray_version) ]] && [[ $(info_extraction xray_version) != ${xray_online_version} ]]; then
                         xray_need_update="${Red}[有新版!]${Font}"
-                    elif [[ ${xray_version} == $(info_extraction xray_version) ]]; then
-                        xray_online_version=$(curl -s https://api.github.com/repos/XTLS/Xray-core/releases | jq -r .[].tag_name | head -1 | sed 's/v//g')
-                        xray_prerelease=$(curl -s https://api.github.com/repos/XTLS/Xray-core/releases | jq -r .[].prerelease | head -1)
+                    elif [[ ${xray_version} == $(info_extraction xray_version) ]] || [[ $(info_extraction xray_version) == ${xray_online_version} ]]; then
                         if [[ $(info_extraction xray_version) !=  ${xray_online_version} ]] && [[ ${xray_prerelease} == false ]]; then
                             xray_need_update="${Green}[有测试版]${Font}"
                         else
@@ -2814,49 +2824,49 @@ menu() {
     echo -e "--- https://github.com/paniy ---\n"
     echo -e "当前模式: ${shell_mode}\n"
 
-    echo -e "可以使用${Red} idleleo ${Font}命令管理脚本${Font}\n"
+    echo -e "可以使用${RedW} idleleo ${Font}命令管理脚本${Font}\n"
 
-    echo -e "—————————————— ${Green}版本检测${Font} ——————————————"
+    echo -e "—————————————— ${GreenW}版本检测${Font} ——————————————"
     echo -e "脚本:  ${shell_need_update}"
     echo -e "Xray:  ${xray_need_update}"
     echo -e "Nginx: ${nginx_need_update}"
-    echo -e "—————————————— ${Green}升级向导${Font} ——————————————"
+    echo -e "—————————————— ${GreenW}升级向导${Font} ——————————————"
     echo -e "${Green}0.${Font}  升级 脚本"
     echo -e "${Green}1.${Font}  升级 Xray"
     echo -e "${Green}2.${Font}  升级 Nginx"
-    echo -e "—————————————— ${Green}安装向导${Font} ——————————————"
+    echo -e "—————————————— ${GreenW}安装向导${Font} ——————————————"
     echo -e "${Green}3.${Font}  安装 Xray (Nginx+ws/gRPC+tls)"
     echo -e "${Green}4.${Font}  安装 Xray (XTLS+Nginx+ws/gRPC)"
     echo -e "${Green}5.${Font}  安装 Xray (ws/gRPC ONLY)"
-    echo -e "—————————————— ${Green}配置变更${Font} ——————————————"
+    echo -e "—————————————— ${GreenW}配置变更${Font} ——————————————"
     echo -e "${Green}6.${Font}  变更 UUIDv5/映射字符串"
     echo -e "${Green}7.${Font}  变更 port"
     echo -e "${Green}8.${Font}  变更 TLS 版本"
     echo -e "${Green}9.${Font}  变更 Nginx 负载均衡配置"
-    echo -e "—————————————— ${Green}用户管理${Font} ——————————————"
+    echo -e "—————————————— ${GreenW}用户管理${Font} ——————————————"
     echo -e "${Green}10.${Font} 查看 Xray 用户"
     echo -e "${Green}11.${Font} 添加 Xray 用户"
     echo -e "${Green}12.${Font} 删除 Xray 用户"
-    echo -e "—————————————— ${Green}查看信息${Font} ——————————————"
+    echo -e "—————————————— ${GreenW}查看信息${Font} ——————————————"
     echo -e "${Green}13.${Font} 查看 Xray 实时访问日志"
     echo -e "${Green}14.${Font} 查看 Xray 实时错误日志"
     echo -e "${Green}15.${Font} 查看 Xray 配置信息"
-    echo -e "—————————————— ${Green}服务相关${Font} ——————————————"
+    echo -e "—————————————— ${GreenW}服务相关${Font} ——————————————"
     echo -e "${Green}16.${Font} 重启 所有服务"
     echo -e "${Green}17.${Font} 启动 所有服务"
     echo -e "${Green}18.${Font} 停止 所有服务"
     echo -e "${Green}19.${Font} 查看 所有服务"
-    echo -e "—————————————— ${Green}证书相关${Font} ——————————————"
+    echo -e "—————————————— ${GreenW}证书相关${Font} ——————————————"
     echo -e "${Green}20.${Font} 查看 证书状态"
     echo -e "${Green}21.${Font} 设置 证书自动更新"
     echo -e "${Green}22.${Font} 更新 证书有效期"
-    echo -e "—————————————— ${Green}其他选项${Font} ——————————————"
+    echo -e "—————————————— ${GreenW}其他选项${Font} ——————————————"
     echo -e "${Green}23.${Font} 设置 TCP 加速"
     echo -e "${Green}24.${Font} 设置 Fail2ban 防暴力破解"
     echo -e "${Green}25.${Font} 设置 Xray 流量统计"
     echo -e "${Green}26.${Font} 清除 日志文件"
     echo -e "${Green}27.${Font} 安装 MTproxy (不推荐)"
-    echo -e "—————————————— ${Green}卸载向导${Font} ——————————————"
+    echo -e "—————————————— ${GreenW}卸载向导${Font} ——————————————"
     echo -e "${Green}28.${Font} 卸载 脚本"
     echo -e "${Green}29.${Font} 清空 证书文件"
     echo -e "${Green}30.${Font} 退出 \n"
