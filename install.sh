@@ -778,9 +778,9 @@ xray_install() {
 xray_update() {
     [[ ! -d /usr/local/etc/xray ]] && echo -e "${GreenBG} 若更新无效, 建议直接卸载再安装！ ${Font}"
     echo -e "${Warning} ${GreenBG} 部分新功能需要重新安装才可生效 ${Font}"
-    xray_online_version=$(curl -s https://api.github.com/repos/XTLS/Xray-core/releases | jq -r .[].tag_name | head -1 | sed 's/v//g')
-    xray_prerelease=$(curl -s https://api.github.com/repos/XTLS/Xray-core/releases | jq -r .[].prerelease | head -1)
-    if [[ $(info_extraction xray_version) !=  ${xray_online_version} ]] && [[ ${xray_prerelease} == false ]]; then
+    xray_online_version=$(curl -s https://api.github.com/repos/XTLS/Xray-core/releases/latest | jq -r .tag_name | head -1 | sed 's/v//g')
+    #xray_prerelease=$(curl -s https://api.github.com/repos/XTLS/Xray-core/releases | jq -r .[].prerelease | head -1)
+    if [[ $(info_extraction xray_version) !=  ${xray_online_version} ]] && [[ ${xray_version} != ${xray_online_version}]]; then
         echo -e "${Warning} ${GreenBG} 检测到存在最新测试版 ${Font}"
         echo -e "${Warning} ${GreenBG} 脚本可能未兼容此版本 ${Font}"
         echo -e "\n${Warning} ${GreenBG} 是否更新到测试版 [Y/${Red}N${Font}${YellowBG}]? ${Font}"
@@ -813,7 +813,7 @@ xray_update() {
     [[ -f ${ssl_chainpath}/xray.key ]] && xray_privilege_escalation
     [[ -f ${xray_default_conf} ]] && rm -rf ${xray_default_conf}
     ln -s ${xray_conf} ${xray_default_conf}
-    modify_xray_version=$(jq -r ".xray_version = ${xray_version}" ${xray_qr_config_file})
+    modify_xray_version=$(jq -r ".xray_version = \"${xray_version}\"" ${xray_qr_config_file})
     echo "${xray_version}" | jq . >${xray_qr_config_file}
     systemctl daemon-reload
     systemctl start xray
@@ -1004,7 +1004,7 @@ nginx_update() {
                 nginx_conf_add_xtls
             fi
             service_start
-            modify_nginx_version=$(jq -r ".nginx_version = ${nginx_version}|.openssl_version = ${openssl_version}|.jemalloc_version = ${jemalloc_version}" ${xray_qr_config_file})
+            modify_nginx_version=$(jq -r ".nginx_version = \"${nginx_version}\"|.openssl_version = \"${openssl_version}\"|.jemalloc_version = \"${jemalloc_version}\"" ${xray_qr_config_file})
             echo "${modify_nginx_version}" | jq . >${xray_qr_config_file}
             judge "Nginx 升级"
         else
@@ -2783,14 +2783,14 @@ idleleo_commend() {
                     nginx_need_update="${Green}[最新版]${Font}"
                 fi
                 if [[ -f ${xray_qr_config_file} ]] && [[ -f ${xray_conf} ]] && [[ -f /usr/local/bin/xray ]]; then
-                    xray_online_version=$(curl -s https://api.github.com/repos/XTLS/Xray-core/releases | jq -r .[].tag_name | head -1 | sed 's/v//g')
-                    xray_prerelease=$(curl -s https://api.github.com/repos/XTLS/Xray-core/releases | jq -r .[].prerelease | head -1)
+                    xray_online_version=$(curl -s https://api.github.com/repos/XTLS/Xray-core/releases/latest | jq -r .tag_name | head -1 | sed 's/v//g')
+                    #xray_prerelease=$(curl -s https://api.github.com/repos/XTLS/Xray-core/releases | jq -r .[].prerelease | head -1)
                     if [[ $(info_extraction xray_version) == null ]]; then
                         xray_need_update="${Green}[已安装] (版本未知)${Font}"
                     elif [[ ${xray_version} != $(info_extraction xray_version) ]] && [[ $(info_extraction xray_version) != ${xray_online_version} ]]; then
                         xray_need_update="${Red}[有新版!]${Font}"
                     elif [[ ${xray_version} == $(info_extraction xray_version) ]] || [[ $(info_extraction xray_version) == ${xray_online_version} ]]; then
-                        if [[ $(info_extraction xray_version) !=  ${xray_online_version} ]] && [[ ${xray_prerelease} == false ]]; then
+                        if [[ $(info_extraction xray_version) !=  ${xray_online_version} ]]; then
                             xray_need_update="${Green}[有测试版]${Font}"
                         else
                             xray_need_update="${Green}[最新版]${Font}"
