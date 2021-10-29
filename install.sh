@@ -34,7 +34,7 @@ OK="${Green}[OK]${Font}"
 Error="${RedW}[错误]${Font}"
 Warning="${RedW}[警告]${Font}"
 
-shell_version="1.9.1.2"
+shell_version="1.9.1.3"
 shell_mode="未安装"
 tls_mode="None"
 ws_grpc_mode="None"
@@ -62,10 +62,7 @@ amce_sh_file="/root/.acme.sh/acme.sh"
 ssl_update_file="${idleleo_dir}/ssl_update.sh"
 cert_group="nobody"
 myemali="my@example.com"
-xray_version="1.4.5"
-nginx_version="1.20.1"
-openssl_version="1.1.1l"
-jemalloc_version="5.2.1"
+get_versions_all=$(curl -s https://www.idleleo.com/api/xray_shell_versions | jq -rc .)
 bt_nginx="None"
 read_config_status=1
 xtls_add_more="off"
@@ -73,6 +70,7 @@ old_config_status="off"
 old_tls_mode="NULL"
 random_num=$((RANDOM % 12 + 4))
 THREAD=$(($(grep 'processor' /proc/cpuinfo | sort -u | wc -l) + 1))
+[[ -f ${xray_qr_config_file} ]] && info_extraction_all=$(jq -rc . ${xray_qr_config_file})
 
 source '/etc/os-release'
 
@@ -129,6 +127,10 @@ judge() {
         echo -e "${Error} ${RedBG} $1 失败 ${Font}"
         exit 1
     fi
+}
+
+check_version() {
+    echo ${get_versions_all} | jq -r ".$1"
 }
 
 pkg_install_judge() {
@@ -778,9 +780,8 @@ xray_install() {
 xray_update() {
     [[ ! -d /usr/local/etc/xray ]] && echo -e "${GreenBG} 若更新无效, 建议直接卸载再安装！ ${Font}"
     echo -e "${Warning} ${GreenBG} 部分新功能需要重新安装才可生效 ${Font}"
-    xray_online_version=$(curl -s https://api.github.com/repos/XTLS/Xray-core/releases/latest | jq -r .tag_name | head -1 | sed 's/v//g')
-    #xray_prerelease=$(curl -s https://api.github.com/repos/XTLS/Xray-core/releases | jq -r .[].prerelease | head -1)
-    if [[ $(info_extraction xray_version) !=  ${xray_online_version} ]] && [[ ${xray_version} != ${xray_online_version}]]; then
+    xray_online_version=$(check_version xray_online_version)
+    if [[ $(info_extraction xray_version) !=  ${xray_online_version} ]] && [[ ${xray_version} != ${xray_online_version} ]]; then
         echo -e "${Warning} ${GreenBG} 检测到存在最新测试版 ${Font}"
         echo -e "${Warning} ${GreenBG} 脚本可能未兼容此版本 ${Font}"
         echo -e "\n${Warning} ${GreenBG} 是否更新到测试版 [Y/${Red}N${Font}${YellowBG}]? ${Font}"
@@ -1842,7 +1843,7 @@ vless_link_image_choice() {
 }
 
 info_extraction() {
-    jq -r ".$1" ${xray_qr_config_file}
+    echo ${info_extraction_all} | jq -r ".$1"
     [[ 0 -ne $? ]] && read_config_status=0
 }
 
@@ -2563,7 +2564,7 @@ install_xray_ws_only() {
 }
 
 update_sh() {
-    ol_version=$(curl -L -s https://raw.githubusercontent.com/paniy/Xray_bash_onekey/main/install.sh | grep "shell_version=" | head -1 | awk -F '=|"' '{print $3}')
+    ol_version=${shell_online_version}
     echo "${ol_version}" >${version_cmp}
     [[ -z ${ol_version} ]] && echo -e "${Error} ${RedBG}  检测最新版本失败! ${Font}" && bash idleleo
     echo "${shell_version}" >>${version_cmp}
@@ -2595,6 +2596,14 @@ update_sh() {
         bash idleleo
     fi
 
+}
+
+read_version() {
+    shell_online_version="$(check_version shell_online_version)"
+    xray_version="$(check_version xray_tested_version)"
+    nginx_version="$(check_version nginx_online_version)"
+    openssl_version="$(check_version openssl_online_version)"
+    jemalloc_version="$(check_version jemalloc_tested_version)"
 }
 
 maintain() {
@@ -2764,7 +2773,7 @@ idleleo_commend() {
             fi
             bash idleleo
         else
-            ol_version=$(curl -L -s https://raw.githubusercontent.com/paniy/Xray_bash_onekey/main/install.sh | grep "shell_version=" | head -1 | awk -F '=|"' '{print $3}')
+            ol_version=${shell_online_version}
             echo "${ol_version}" >${version_cmp}
             [[ -z ${ol_version} ]] && shell_need_update="${Red}[检测失败!]${Font}"
             echo "${shell_version}" >>${version_cmp}
@@ -2775,7 +2784,7 @@ idleleo_commend() {
                 shell_need_update="${Green}[最新版^O^]${Font}"
             fi
             if [[ -f ${xray_qr_config_file} ]]; then
-                if [[ $(info_extraction nginx_version) == null ]] && [[ ! -f "/etc/nginx/sbin/nginx" ]];then
+                if [[ $(info_extraction nginx_version) == null ]] || [[ ! -f "/etc/nginx/sbin/nginx" ]];then
                     nginx_need_update="${Red}[未安装]${Font}"
                 elif [[ ${nginx_version} != $(info_extraction nginx_version) ]] || [[ ${openssl_version} != $(info_extraction openssl_version) ]] || [[ ${jemalloc_version} != $(info_extraction jemalloc_version) ]];then
                     nginx_need_update="${Red}[有新版!]${Font}"
@@ -2783,8 +2792,7 @@ idleleo_commend() {
                     nginx_need_update="${Green}[最新版]${Font}"
                 fi
                 if [[ -f ${xray_qr_config_file} ]] && [[ -f ${xray_conf} ]] && [[ -f /usr/local/bin/xray ]]; then
-                    xray_online_version=$(curl -s https://api.github.com/repos/XTLS/Xray-core/releases/latest | jq -r .tag_name | head -1 | sed 's/v//g')
-                    #xray_prerelease=$(curl -s https://api.github.com/repos/XTLS/Xray-core/releases | jq -r .[].prerelease | head -1)
+                    xray_online_version=$(check_version xray_online_version)
                     if [[ $(info_extraction xray_version) == null ]]; then
                         xray_need_update="${Green}[已安装] (版本未知)${Font}"
                     elif [[ ${xray_version} != $(info_extraction xray_version) ]] && [[ $(info_extraction xray_version) != ${xray_online_version} ]]; then
@@ -3060,6 +3068,7 @@ menu() {
     esac
 }
 
+read_version
 judge_mode
 idleleo_commend
 list "$*"
