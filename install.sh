@@ -131,6 +131,7 @@ judge() {
 
 check_version() {
     echo ${get_versions_all} | jq -r ".$1"
+    [[ 0 -ne $? ]] && echo -e "${Error} ${RedBG} 在线版本检测失败, 请稍后再试！ ${Font}" && exit 1
 }
 
 pkg_install_judge() {
