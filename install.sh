@@ -127,7 +127,6 @@ check_version() {
 }
 
 pkg_install_judge() {
-    then
         yum list installed | grep -iw "^$1"
     else
         dpkg --get-selections | grep -iw "^$1" | grep -ivw "deinstall"
