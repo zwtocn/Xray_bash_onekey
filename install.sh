@@ -77,9 +77,17 @@ source '/etc/os-release'
 VERSION=$(echo "${VERSION}" | awk -F "[()]" '{print $2}')
 
 check_system() {
-    if [[ "${ID}" == "lo" && ${VERSION_ID} -ge 7 ]]; then
-        echo -e "${OK} ${GreenBG} 当前系统为 lo ${VERSION_ID} ${VERSION} ${Font}"
+    if [[ "${ID}" == "ol" && ${VERSION_ID} -ge 7 ]]; then
+        echo -e "${OK} ${GreenBG} 当前系统为 ol ${VERSION_ID} ${VERSION} ${Font}"
         INS="yum"
+        [[ ! -f ${xray_qr_config_file} ]] && $INS update
+    elif [[ "${ID}" == "debian" && ${VERSION_ID} -ge 8 ]]; then
+        echo -e "${OK} ${GreenBG} 当前系统为 Debian ${VERSION_ID} ${VERSION} ${Font}"
+        INS="apt"
+        [[ ! -f ${xray_qr_config_file} ]] && $INS update
+    elif [[ "${ID}" == "ubuntu" && $(echo "${VERSION_ID}" | cut -d '.' -f1) -ge 16 ]]; then
+        echo -e "${OK} ${GreenBG} 当前系统为 Ubuntu ${VERSION_ID} ${UBUNTU_CODENAME} ${Font}"
+        INS="apt"
         if [[ ! -f ${xray_qr_config_file} ]]; then
             rm /var/lib/dpkg/lock
             dpkg --configure -a
@@ -88,7 +96,9 @@ check_system() {
             $INS update
         fi
     else
-     
+        echo -e "${Error} ${RedBG} 当前系统为 ${ID} ${VERSION_ID} 不在支持的系统列表内, 安装中断! ${Font}"
+        exit 1
+    fi
 
     #systemctl stop firewalld
     #systemctl disable firewalld
@@ -125,7 +135,12 @@ check_version() {
 }
 
 pkg_install_judge() {
+    if [[ "${ID}" == "centos" ]]; then
         yum list installed | grep -iw "^$1"
+    else
+        dpkg --get-selections | grep -iw "^$1" | grep -ivw "deinstall"
+    fi
+    wait
 }
 
 pkg_install() {
