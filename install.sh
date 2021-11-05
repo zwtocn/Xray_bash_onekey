@@ -81,7 +81,7 @@ check_system() {
         echo -e "${OK} ${GreenBG} 当前系统为 Centos ${VERSION_ID} ${VERSION} ${Font}"
         INS="yum"
         [[ ! -f ${xray_qr_config_file} ]] && $INS update
-    elif [[ "${ID}" == "ol" && ${VERSION_ID} -ge 7 ]]; then
+    elif [[ "${ID}" == "ol" && ${VERSION_ID} -ge 7.9 ]]; then
         ##echo -e "${OK} ${GreenBG} 当前系统为 ol ${VERSION_ID} ${VERSION} ${Font}"
         INS="yum"
         [[ ! -f ${xray_qr_config_file} ]] && $INS update
