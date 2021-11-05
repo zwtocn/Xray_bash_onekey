@@ -9,7 +9,7 @@ cd "$(
 )" || exit
 
 #=====================================================
-#	System Request: Debian 9+/Ubuntu 18.04+/Centos 7+
+#	System Request: Debian 9+/Ubuntu 18.04+/ol 7+
 #	Author:	paniy
 #	Dscription: Xray Onekey Management
 #	Version: 2.0
@@ -135,7 +135,7 @@ check_version() {
 }
 
 pkg_install_judge() {
-    if [[ "${ID}" == "centos" ]]; then
+    if [[ "${ID}" == "ol" ]]; then
         yum list installed | grep -iw "^$1"
     else
         dpkg --get-selections | grep -iw "^$1" | grep -ivw "deinstall"
@@ -174,13 +174,13 @@ pkg_install() {
 
 dependency_install() {
     pkg_install "bc,curl,dbus,git,jq,lsof,python3,qrencode,wget"
-    if [[ "${ID}" == "centos" ]]; then
+    if [[ "${ID}" == "ol" ]]; then
         pkg_install "crontabs"
     else
         pkg_install "cron"
     fi
     if [[ ! -f /var/spool/cron/root ]] && [[ ! -f /var/spool/cron/crontabs/root ]]; then
-        if [[ "${ID}" == "centos" ]]; then
+        if [[ "${ID}" == "ol" ]]; then
             touch /var/spool/cron/root && chmod 600 /var/spool/cron/root
             systemctl start crond && systemctl enable crond >/dev/null 2>&1
             judge "crontab 自启动配置"
@@ -191,7 +191,7 @@ dependency_install() {
         fi
     fi
     if [[ ${tls_mode} != "None" ]]; then
-        if [[ "${ID}" == "centos" ]]; then
+        if [[ "${ID}" == "ol" ]]; then
             if [[ -z $(${INS} group list installed | grep -i "Development Tools") ]]; then
                 ${INS} -y groupinstall "Development Tools"
                 judge "安装 Development Tools"
@@ -203,7 +203,7 @@ dependency_install() {
         fi
         judge "编译工具包 安装"
     fi
-    if [[ "${ID}" == "centos" ]]; then
+    if [[ "${ID}" == "ol" ]]; then
         pkg_install "epel-release,iputils,pcre,pcre-devel,zlib-devel"
     else
         pkg_install "iputils-ping,libpcre3,libpcre3-dev,zlib1g-dev"
@@ -235,7 +235,7 @@ basic_optimization() {
     echo '* hard nofile 65536' >>/etc/security/limits.conf
 
     # 关闭 Selinux
-    if [[ "${ID}" == "centos" ]]; then
+    if [[ "${ID}" == "ol" ]]; then
         sed -i 's/^SELINUX=.*/SELINUX=disabled/' /etc/selinux/config
         setenforce 0
     fi
@@ -387,7 +387,7 @@ firewall_set() {
             esac
         fi
         wait
-        if [[ "${ID}" == "centos" ]]; then
+        if [[ "${ID}" == "ol" ]]; then
             pkg_install "iptables-services"
         else
             pkg_install "iptables-persistent"
@@ -422,7 +422,7 @@ firewall_set() {
             iptables -I INPUT -p udp --dport 1024:65535 -j ACCEPT
         fi
         wait
-        if [[ "${ID}" == "centos" && ${VERSION_ID} -ge 7 ]]; then
+        if [[ "${ID}" == "ol" && ${VERSION_ID} -ge 7 ]]; then
             service iptables save
             service iptables restart
             echo -e "${OK} ${GreenBG} 防火墙 重启 完成 ${Font}"
@@ -598,7 +598,7 @@ nginx_upstream_server_set() {
                         esac
                     fi
                     wait
-                    if [[ "${ID}" == "centos" ]]; then
+                    if [[ "${ID}" == "ol" ]]; then
                         pkg_install "iptables-services"
                     else
                         pkg_install "iptables-persistent"
@@ -609,7 +609,7 @@ nginx_upstream_server_set() {
                     iptables -I OUTPUT -p tcp --sport ${upstream_port} -j ACCEPT
                     iptables -I OUTPUT -p udp --sport ${upstream_port} -j ACCEPT
                     echo -e "${OK} ${GreenBG} 防火墙 追加 完成 ${Font}"
-                    if [[ "${ID}" == "centos" && ${VERSION_ID} -ge 7 ]]; then
+                    if [[ "${ID}" == "ol" && ${VERSION_ID} -ge 7 ]]; then
                         service iptables save
                         service iptables restart
                         echo -e "${OK} ${GreenBG} 防火墙 重启 完成 ${Font}"
@@ -1530,7 +1530,7 @@ acme_cron_update() {
             if [[ "${ssl_self}" != "on" ]]; then
                 wget -N -P ${idleleo_dir} --no-check-certificate https://raw.githubusercontent.com/paniy/Xray_bash_onekey/main/ssl_update.sh && chmod +x ${ssl_update_file}
                 if [[ $(crontab -l | grep -c "ssl_update.sh") -lt 1 ]]; then
-                    if [[ "${ID}" == "centos" ]]; then
+                    if [[ "${ID}" == "ol" ]]; then
                         #        sed -i "/acme.sh/c 0 3 * * 0 \"/root/.acme.sh\"/acme.sh --cron --home \"/root/.acme.sh\" \
                         #        &> /dev/null" /var/spool/cron/root
                         sed -i "/acme.sh/c 0 3 15 * * bash ${ssl_update_file}" /var/spool/cron/root
@@ -1674,7 +1674,7 @@ clean_logs() {
         ;;
     *)
         echo -e "${OK} ${GreenBG} 将在 每周三 04:00 自动清空日志 ${Font}"
-        if [[ "${ID}" == "centos" ]]; then
+        if [[ "${ID}" == "ol" ]]; then
             if [[ $(grep -c "find /var/log/xray/ /etc/nginx/logs -name" /var/spool/cron/root) -eq '0' ]]; then
                 echo "0 4 * * 3 for i in \$(find /var/log/xray/ /etc/nginx/logs -name \"*.log\"); do cat /dev/null >\$i; done >/dev/null 2>&1" >> /var/spool/cron/root
                 judge "设置自动清理日志"
