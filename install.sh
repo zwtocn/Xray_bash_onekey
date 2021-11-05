@@ -80,14 +80,6 @@ check_system() {
     if [[ "${ID}" == "lo" && ${VERSION_ID} -ge 7 ]]; then
         echo -e "${OK} ${GreenBG} 当前系统为 Centos ${VERSION_ID} ${VERSION} ${Font}"
         INS="yum"
-        [[ ! -f ${xray_qr_config_file} ]] && $INS update
-    elif [[ "${ID}" == "debian" && ${VERSION_ID} -ge 8 ]]; then
-        echo -e "${OK} ${GreenBG} 当前系统为 Debian ${VERSION_ID} ${VERSION} ${Font}"
-        INS="apt"
-        [[ ! -f ${xray_qr_config_file} ]] && $INS update
-    elif [[ "${ID}" == "ubuntu" && $(echo "${VERSION_ID}" | cut -d '.' -f1) -ge 16 ]]; then
-        echo -e "${OK} ${GreenBG} 当前系统为 Ubuntu ${VERSION_ID} ${UBUNTU_CODENAME} ${Font}"
-        INS="apt"
         if [[ ! -f ${xray_qr_config_file} ]]; then
             rm /var/lib/dpkg/lock
             dpkg --configure -a
