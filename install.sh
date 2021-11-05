@@ -34,7 +34,7 @@ OK="${Green}[OK]${Font}"
 Error="${RedW}[错误]${Font}"
 Warning="${RedW}[警告]${Font}"
 
-shell_version="1.9.1.3"
+shell_version="1.9.1.4"
 shell_mode="未安装"
 tls_mode="None"
 ws_grpc_mode="None"
@@ -62,7 +62,7 @@ amce_sh_file="/root/.acme.sh/acme.sh"
 ssl_update_file="${idleleo_dir}/ssl_update.sh"
 cert_group="nobody"
 myemali="my@example.com"
-get_versions_all=$(curl -s https://www.idleleo.com/api/xray_shell_versions | jq -rc .)
+get_versions_all=$(curl -s https://www.idleleo.com/api/xray_shell_versions?cache=cf | jq -rc .)
 bt_nginx="None"
 read_config_status=1
 xtls_add_more="off"
@@ -1716,6 +1716,7 @@ vless_qr_config_tls_ws() {
     "jemalloc_version": "${jemalloc_version}"
 }
 EOF
+    info_extraction_all=$(jq -rc . ${xray_qr_config_file})
 }
 
 vless_qr_config_xtls() {
@@ -1742,6 +1743,7 @@ vless_qr_config_xtls() {
     "jemalloc_version": "${jemalloc_version}"
 }
 EOF
+    info_extraction_all=$(jq -rc . ${xray_qr_config_file})
 }
 
 vless_qr_config_ws_only() {
@@ -1762,6 +1764,7 @@ vless_qr_config_ws_only() {
     "xray_version": "${xray_version}"
 }
 EOF
+    info_extraction_all=$(jq -rc . ${xray_qr_config_file})
 }
 
 vless_urlquote()
