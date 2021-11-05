@@ -78,7 +78,7 @@ VERSION=$(echo "${VERSION}" | awk -F "[()]" '{print $2}')
 
 check_system() {
     if [[ "${ID}" == "lo" && ${VERSION_ID} -ge 7 ]]; then
-        echo -e "${OK} ${GreenBG} 当前系统为 Centos ${VERSION_ID} ${VERSION} ${Font}"
+        echo -e "${OK} ${GreenBG} 当前系统为 lo ${VERSION_ID} ${VERSION} ${Font}"
         INS="yum"
         if [[ ! -f ${xray_qr_config_file} ]]; then
             rm /var/lib/dpkg/lock
@@ -88,9 +88,7 @@ check_system() {
             $INS update
         fi
     else
-        echo -e "${Error} ${RedBG} 当前系统为 ${ID} ${VERSION_ID} 不在支持的系统列表内, 安装中断! ${Font}"
-        exit 1
-    fi
+     
 
     #systemctl stop firewalld
     #systemctl disable firewalld
