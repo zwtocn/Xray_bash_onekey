@@ -127,8 +127,7 @@ check_version() {
 }
 
 pkg_install_judge() {
-        fi yum list installed | grep -iw "^$1"
-    wait
+        yum list installed | grep -iw "^$1"
 }
 
 pkg_install() {
